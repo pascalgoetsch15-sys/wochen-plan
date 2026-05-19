@@ -1626,7 +1626,7 @@
 
   try { const s=JSON.parse(localStorage.getItem('wochenplaner_termintypen')||'null'); if(Array.isArray(s)&&s.length) terminTypen=s; } catch(e){}
 
-  const saveTerminTypen = () => localStorage.setItem('wochenplaner_termintypen', JSON.stringify(terminTypen));
+  const saveTerminTypen = () => { localStorage.setItem('wochenplaner_termintypen', JSON.stringify(terminTypen)); if(window.fbSave) window.fbSave('termintypen', terminTypen); };
 
   function getTypById(id) { return terminTypen.find(t=>t.id===id)||null; }
 
@@ -1770,7 +1770,7 @@
 
   try { Object.assign(settings, JSON.parse(localStorage.getItem('wochenplaner_settings') || '{}')); } catch(e){}
 
-  const saveSettings = () => localStorage.setItem('wochenplaner_settings', JSON.stringify(settings));
+  const saveSettings = () => { localStorage.setItem('wochenplaner_settings', JSON.stringify(settings)); if(window.fbSave) window.fbSave('settings', settings); };
 
  
 
@@ -1928,7 +1928,7 @@
 
  
 
-  const saveCalTasks = () => localStorage.setItem('wochenplaner_tasks', JSON.stringify(calTasks));
+  const saveCalTasks = () => { localStorage.setItem('wochenplaner_tasks', JSON.stringify(calTasks)); if(window.fbSave) window.fbSave('tasks', calTasks); };
 
  
 
@@ -2576,7 +2576,7 @@
 
  
 
-  const saveAufgaben = () => localStorage.setItem('wochenplaner_aufgaben', JSON.stringify(aufgaben));
+  const saveAufgaben = () => { localStorage.setItem('wochenplaner_aufgaben', JSON.stringify(aufgaben)); if(window.fbSave) window.fbSave('aufgaben', aufgaben); };
 
  
 
@@ -2981,6 +2981,7 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyDtCRuvh6aHu66giMzamtiwMAjgWy6yFfU",
@@ -2988,11 +2989,31 @@
     projectId: "wochenplan-e21c1",
     storageBucket: "wochenplan-e21c1.firebasestorage.app",
     messagingSenderId: "927293761989",
-    appId: "1:927293761989:web:7d25671e5c16bfba5883ac"
+    appId: "1:927293761989:web:7d25671e5c16bfba5883ac",
+    databaseURL: "https://wochenplan-e21c1-default-rtdb.europe-west1.firebasedatabase.app"
   };
 
   firebase.initializeApp(firebaseConfig);
   const fbAuth = firebase.auth();
+  const fbDb   = firebase.database();
+  let currentUid = null;
+
+  window.fbSave = function(key, value) {
+    if (!currentUid) return;
+    fbDb.ref('users/' + currentUid + '/' + key).set(JSON.stringify(value));
+  };
+
+  async function loadFromFirebase(uid) {
+    const snap = await fbDb.ref('users/' + uid).once('value');
+    const data = snap.val() || {};
+    try { const arr = JSON.parse(data.termintypen); if (Array.isArray(arr) && arr.length) terminTypen = arr; } catch(e){}
+    try { Object.assign(settings, JSON.parse(data.settings)); } catch(e){}
+    try { const t = JSON.parse(data.tasks); if (t && typeof t === 'object') calTasks = t; } catch(e){}
+    try { const a = JSON.parse(data.aufgaben); if (Array.isArray(a)) aufgaben = a; } catch(e){}
+    applySettings();
+    checkAndResetAufgaben();
+    renderView();
+  }
 
   async function signInWithGoogle() {
     const errEl = document.getElementById('loginErr');
@@ -3007,24 +3028,27 @@
   }
 
   function signOut() {
+    currentUid = null;
     fbAuth.signOut();
   }
 
-  fbAuth.onAuthStateChanged(user => {
+  fbAuth.onAuthStateChanged(async user => {
     const overlay = document.getElementById('loginOverlay');
-    const chip = document.getElementById('userChip');
-    const avatar = document.getElementById('userAvatar');
-    const nameEl = document.getElementById('userName');
+    const chip    = document.getElementById('userChip');
+    const avatar  = document.getElementById('userAvatar');
+    const nameEl  = document.getElementById('userName');
 
     if (user) {
-      overlay.style.display = 'none';
-      chip.style.display = 'flex';
+      currentUid = user.uid;
       nameEl.textContent = user.displayName || user.email.split('@')[0];
       if (user.photoURL) {
         avatar.innerHTML = `<img src="${user.photoURL}" alt="">`;
       } else {
         avatar.textContent = (user.displayName || user.email)[0].toUpperCase();
       }
+      await loadFromFirebase(user.uid);
+      overlay.style.display = 'none';
+      chip.style.display = 'flex';
     } else {
       overlay.style.display = 'flex';
       chip.style.display = 'none';
