@@ -1901,6 +1901,7 @@
       document.getElementById('btnToday').classList.toggle('hidden', tab!=='kalender');
 
       if (tab==='aufgaben') renderAufgaben();
+      if (tab==='einstellungen') renderTerminTypen();
 
     });
 
@@ -3013,6 +3014,7 @@
     applySettings();
     checkAndResetAufgaben();
     renderView();
+    renderTerminTypen();
   }
 
   async function signInWithGoogle() {
