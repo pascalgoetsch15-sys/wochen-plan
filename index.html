@@ -320,7 +320,7 @@
 
     .time-indicator { position: absolute; left: 0; right: 0; z-index: 5; pointer-events: none; display: flex; align-items: center; }
 
-    .time-indicator::before { content: ''; width: 9px; height: 9px; background: #22c55e; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px #22c55e99; }
+    .time-indicator::before { content: none; }
 
     .time-indicator::after { content: ''; flex: 1; height: 2px; background: #22c55e; box-shadow: 0 0 4px #22c55e77; }
 
@@ -2967,7 +2967,7 @@
 
   }
 
-  updateClock(); setInterval(updateClock,1000); setInterval(()=>{updateTimeIndicator();checkAndResetAufgaben();},60000);
+  updateClock(); setInterval(updateClock,1000); setInterval(updateTimeIndicator,1000); setInterval(checkAndResetAufgaben,60000);
 
  
 
